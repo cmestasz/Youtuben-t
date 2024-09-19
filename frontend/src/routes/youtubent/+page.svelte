@@ -1,10 +1,15 @@
 <script lang="ts">
 	import { postRequest } from '$lib/Fetcher.svelte';
 	import { onMount } from 'svelte';
+	import type { VideoResult } from '$lib/youtubent/Models.svelte';
+	import VideoElement from '$lib/youtubent/VideoElement.svelte';
+	import PlayerElement from '$lib/youtubent/PlayerElement.svelte';
 
 	let queryElement: HTMLInputElement;
 	let tokenElement: HTMLInputElement;
 	let token: string;
+	let results: VideoResult[] = [];
+	let audioURL: string;
 
 	onMount(() => {
 		queryElement = document.getElementById('query') as HTMLInputElement;
@@ -31,17 +36,10 @@
 		query: string;
 		token: string;
 	}
-	interface VideoResult {
-		title: string;
-		video_id: string;
-		thumbnail: string;
-		channel: string;
-	}
 	interface SearchResponse {
 		results: VideoResult[];
 	}
 
-	let results: VideoResult[] = [];
 
 	async function search() {
 		if (!checkForToken()) {
@@ -63,28 +61,6 @@
 		results = response.results;
 	}
 
-	interface PlayRequest {
-		video_id: string;
-	}
-	interface PlayResponse {
-		url: string;
-	}
-
-	let audioURL: string;
-
-	async function play(event: Event) {
-		let videoId = (event.target as HTMLButtonElement).value;
-		let request: PlayRequest = {
-			video_id: videoId
-		};
-
-		let response = await postRequest<PlayRequest, PlayResponse>('youtubent/play/', request);
-		if (response == null) {
-			return;
-		}
-
-        audioURL = response.url;
-	}
 </script>
 
 <h1>Not quite Youtube</h1>
@@ -101,19 +77,11 @@
 <button on:click={search}>Search</button>
 
 {#each results as result}
-	<div>
-		<img src={result.thumbnail} alt="thumbnail" width="120" height="90" />
-		<button on:click={play} value={result.video_id}>Play</button>
-		<p>{result.channel}</p>
-	</div>
+	<VideoElement {result} bind:audioURL={audioURL} />
 {/each}
 
 {#if audioURL}
 	<footer>
-        <p>Now playing:</p>
-		<audio controls autoplay>
-			<source src={audioURL} type="audio/mpeg" id="player" />
-            Your browser does not support the audio element.
-		</audio>
+		<PlayerElement {audioURL} />
 	</footer>
 {/if}

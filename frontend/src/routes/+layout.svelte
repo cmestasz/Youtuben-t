@@ -8,6 +8,7 @@
 
 <nav>
     <a href="/youtubent">Youtuben't</a>
+    <a href="/youtubent/cached-list">Youtuben't cached list</a>
 </nav>
 
 <slot></slot>
