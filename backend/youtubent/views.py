@@ -2,14 +2,69 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.core.files import File
 from django.conf import settings
+from django.contrib.auth.hashers import make_password, check_password
+from django.utils import timezone
 import os
 import requests
 import yt_dlp
-from .models import CachedAudio
+from .models import CachedAudio, Account, AccountAudio, Session
 from .serializers import CachedAudioSerializer
+from .utils import refresh_session, dumb_token
 
 # Create your views here.
 
+class Login(APIView):
+    def post(self, request):
+        type = request.data['type']
+        if type == 'token':
+            token = request.data['token']
+            if token:
+                session = Session.objects.filter(token=token).first()
+                if session:
+                    if session.expire < timezone.now():
+                        session.delete()
+                        return Response({'error': 'Token expired'}, status=400)
+
+                    refresh_session(session)
+                    return Response({'token': token}, status=200)
+            return Response({'error': 'Invalid token'}, status=400)
+    
+        elif type == 'credentials':
+            user = request.data['user']
+            password = request.data['password']
+            if user and password:
+                account = Account.objects.filter(user=user).first()
+                if account and check_password(password, account.password):
+                    Session.objects.filter(account=account).delete()
+
+                    token = dumb_token()
+                    session = Session.objects.create(token=token, account=account)
+                    refresh_session(session)
+                    return Response({'token': token}, status=200)
+
+                return Response({'error': 'Invalid user or password'}, status=400)
+            return Response({'error': 'Invalid user or password'}, status=400)
+        
+
+class Register(APIView):
+    def post(self, request):
+        user = request.data['user']
+        password = request.data['password']
+
+        if user and password:
+            if Account.objects.filter(user=user).exists():
+                return Response({'error': 'User already exists'}, status=400)
+            
+            h_password = make_password(password)
+            account = Account.objects.create(user=user, password=h_password)
+
+            token = dumb_token()
+            session = Session.objects.create(account=account, token=token)
+            refresh_session(session)
+
+            return Response({'token': token}, status=200)
+
+        return Response({'error': 'Invalid user or password'}, status=400)
 
 class Search(APIView):
     BASE_URL = 'https://www.googleapis.com/youtube/v3/search'
