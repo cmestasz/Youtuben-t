@@ -5,7 +5,9 @@
 		let dest: string = API_URL + url;
 		const response = await fetch(dest);
 		if (!response.ok) {
-			throw new Error(response.statusText);
+            let obj: Error = await response.json();
+            alert(obj.error);
+            return null;
 		}
 		let obj: Response = await response.json();
 		console.log(obj);
