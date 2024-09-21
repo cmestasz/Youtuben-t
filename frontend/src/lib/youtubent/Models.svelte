@@ -9,4 +9,10 @@
     export interface PlaylistVideoResult extends VideoResult {
         url: string;
     }
+
+    export enum VideoElementType {
+		RESULT = 'result',
+		PLAYLIST = 'playlist',
+		SAVED = 'saved'
+	}
 </script>

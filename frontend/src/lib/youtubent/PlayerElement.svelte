@@ -45,15 +45,18 @@
 </script>
 
 <Footer
-	class="fixed bottom-0 start-0 z-20 w-full border-t border-gray-200 bg-white p-4 shadow md:flex md:items-center md:justify-between md:p-6 dark:border-gray-600 dark:bg-gray-800"
+	class="fixed bottom-0 start-0 z-20 w-full justify-evenly border-t border-gray-200 bg-white p-4 shadow md:flex md:items-center md:p-6 dark:border-gray-600 dark:bg-gray-800"
 >
 	<FooterCopyright href="/" by="Cricro" year={2024} />
-	<Toggle bind:checked={looping}>Loop</Toggle>
-	<div>
-		<p>Now playing: {currentName}</p>
-		<audio bind:this={audioElement} controls autoplay>
-			<source bind:this={audioSourceElement} type="audio/mpeg" />
-			Your browser does not support the audio element.
-		</audio>
+	<div class="flex flex-row gap-4">
+		<div class="flex flex-col items-center gap-1">
+			<p class="font-bold">Now playing:</p>
+			<p>{currentName}</p>
+			<audio bind:this={audioElement} controls autoplay>
+				<source bind:this={audioSourceElement} type="audio/mpeg" />
+				Your browser does not support the audio element.
+			</audio>
+		</div>
+		<Toggle bind:checked={looping}>Loop</Toggle>
 	</div>
 </Footer>

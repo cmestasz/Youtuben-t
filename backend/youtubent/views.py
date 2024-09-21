@@ -10,8 +10,10 @@ import yt_dlp
 from .models import CachedAudio, Account, AccountAudio, Session
 from .serializers import CachedAudioSerializer
 from .utils import refresh_session, dumb_token
+from .consts import MAX_SAVED_VIDEOS
 
 # Create your views here.
+
 
 class Login(APIView):
     def post(self, request):
@@ -28,7 +30,7 @@ class Login(APIView):
                     refresh_session(session)
                     return Response({'token': token, 'user': session.account.user}, status=200)
             return Response({'error': 'Invalid token'}, status=400)
-    
+
         elif type == 'credentials':
             user = request.data['user']
             password = request.data['password']
@@ -38,13 +40,14 @@ class Login(APIView):
                     Session.objects.filter(account=account).delete()
 
                     token = dumb_token()
-                    session = Session.objects.create(token=token, account=account)
+                    session = Session.objects.create(
+                        token=token, account=account)
                     refresh_session(session)
                     return Response({'token': token, 'user': session.account.user}, status=200)
 
                 return Response({'error': 'User and password don\'t match'}, status=400)
             return Response({'error': 'Invalid user or password'}, status=400)
-        
+
 
 class Register(APIView):
     def post(self, request):
@@ -55,7 +58,7 @@ class Register(APIView):
         if user and password:
             if Account.objects.filter(user=user).exists():
                 return Response({'error': 'User already exists'}, status=400)
-            
+
             h_password = make_password(password)
             account = Account.objects.create(user=user, password=h_password)
 
@@ -66,7 +69,8 @@ class Register(APIView):
             return Response({'token': token, 'user': account.user}, status=200)
 
         return Response({'error': 'Invalid user or password'}, status=400)
-    
+
+
 class Logout(APIView):
     def post(self, request):
         token = request.data['token']
@@ -76,6 +80,7 @@ class Logout(APIView):
                 session.delete()
                 return Response({}, status=200)
         return Response({'error': 'Invalid token'}, status=400)
+
 
 class Search(APIView):
     BASE_URL = 'https://www.googleapis.com/youtube/v3/search'
@@ -175,3 +180,65 @@ class CachedAudioViewSet(APIView):
         queryset = CachedAudio.objects.exclude(file='')
         serializer = CachedAudioSerializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class Save(APIView):
+    def post(self, request):
+        token = request.data['token']
+        video_id = request.data['video_id']
+
+        if token and video_id:
+            session = Session.objects.filter(token=token).first()
+            if session:
+                account = session.account
+                audio = CachedAudio.objects.filter(yt_id=video_id).first()
+                if audio:
+                    if account.saved_amount < MAX_SAVED_VIDEOS:
+                        existing = AccountAudio.objects.filter(account=account, audio=audio)
+                        if not existing.exists():
+                            AccountAudio.objects.create(account=account, audio=audio)
+                            account.saved_amount += 1
+                            account.save()
+                            return Response({}, status=200)
+                        return Response({'error': 'Video already saved'}, status=400)
+                    return Response({'error': 'You have reached the maximum amount of saved videos'}, status=400)
+        return Response({'error': 'Invalid token or video_id'}, status=400)
+
+
+class Forget(APIView):
+    def post(self, request):
+        token = request.data['token']
+        video_id = request.data['video_id']
+
+        if token and video_id:
+            session = Session.objects.filter(token=token).first()
+            if session:
+                account = session.account
+                audio = CachedAudio.objects.filter(yt_id=video_id).first()
+                if audio:
+                    query = AccountAudio.objects.filter(
+                        account=account, audio=audio)
+                    if query.exists():
+                        query.delete()
+                        account.saved_amount -= 1
+                        account.save()
+                        return Response({}, status=200)
+        return Response({'error': 'Invalid token or video_id'}, status=400)
+
+
+class SavedList(APIView):
+    def post(self, request):
+        token = request.data['token']
+
+        if token:
+            session = Session.objects.filter(token=token).first()
+            if session:
+                account = session.account
+                account_audios = AccountAudio.objects.filter(account=account)
+                queryset = CachedAudio.objects.filter(accountaudio__in=account_audios)
+
+                serializer = CachedAudioSerializer(queryset, many=True)
+                
+                data = {'results': serializer.data, 'saved_amount': account.saved_amount, 'max_amount': MAX_SAVED_VIDEOS}
+                return Response(data, status=200)
+        return Response({'error': 'Invalid token'}, status=400)

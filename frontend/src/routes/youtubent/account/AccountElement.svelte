@@ -2,6 +2,7 @@
 	import { postRequest } from '$lib/Fetcher.svelte';
 	import { onMount } from 'svelte';
 	import { ACCOUNT_TOKEN_NAME, USER_NAME } from '$lib/Constants.svelte';
+	import { Button } from 'flowbite-svelte';
 
 	let userElement: HTMLInputElement;
 	let passElement: HTMLInputElement;
@@ -132,14 +133,16 @@
 	}
 </script>
 
-<div class="container m-auto flex flex-col items-center gap-5 p-10">
+<div class="container m-auto flex w-full flex-col items-center gap-6">
 	{#if displayUser}
-		<p>Welcome, {displayUser}</p>
-		<button on:click={logout}>Logout</button>
+		<p class="text-2xl">Welcome, {displayUser}!</p>
+		<Button class="w-64" pill color="red" on:click={logout}>Logout</Button>
 	{:else}
-		<input bind:this={userElement} type="text" placeholder="User" />
-		<input bind:this={passElement} type="password" placeholder="Password" />
-		<button on:click={manualLogin}>Login</button>
-		<button on:click={register}>Register</button>
+		<input class="block w-1/2" bind:this={userElement} type="text" placeholder="User" />
+		<input class="block w-1/2" bind:this={passElement} type="password" placeholder="Password" />
+		<div class="flex flex-row gap-5">
+			<Button class="w-64" pill on:click={manualLogin}>Login</Button>
+			<Button class="w-64" pill on:click={register}>Register</Button>
+		</div>
 	{/if}
 </div>
