@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { VideoResult } from './Models.svelte';
     import { postRequest } from '$lib/Fetcher.svelte';
+	import { audioURL } from './Stores.svelte';
 
 	export let result: VideoResult;
-    export let audioURL: string;
 
     interface PlayRequest {
 		video_id: string;
@@ -23,13 +23,13 @@
 			return;
 		}
 
-		audioURL = response.url;
+		audioURL.set(response.url);
 	}
 </script>
 
 <div>
-	<img src={result.thumbnail} alt="thumbnail" width="120" height="90" />
-	<button on:click={play} value={result.yt_id}>Play</button>
 	<p>{result.title}</p>
 	<p>{result.channel}</p>
+	<img src={result.thumbnail} alt="thumbnail" width="120" height="90" />
+	<button on:click={play} value={result.yt_id}>Play</button>
 </div>

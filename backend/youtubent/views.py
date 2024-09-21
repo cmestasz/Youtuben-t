@@ -26,7 +26,7 @@ class Login(APIView):
                         return Response({'error': 'Token expired'}, status=400)
 
                     refresh_session(session)
-                    return Response({'token': token}, status=200)
+                    return Response({'token': token, 'user': session.account.user}, status=200)
             return Response({'error': 'Invalid token'}, status=400)
     
         elif type == 'credentials':
@@ -40,9 +40,9 @@ class Login(APIView):
                     token = dumb_token()
                     session = Session.objects.create(token=token, account=account)
                     refresh_session(session)
-                    return Response({'token': token}, status=200)
+                    return Response({'token': token, 'user': session.account.user}, status=200)
 
-                return Response({'error': 'Invalid user or password'}, status=400)
+                return Response({'error': 'User and password don\'t match'}, status=400)
             return Response({'error': 'Invalid user or password'}, status=400)
         
 
@@ -51,6 +51,7 @@ class Register(APIView):
         user = request.data['user']
         password = request.data['password']
 
+        print(user, password)
         if user and password:
             if Account.objects.filter(user=user).exists():
                 return Response({'error': 'User already exists'}, status=400)
@@ -62,9 +63,19 @@ class Register(APIView):
             session = Session.objects.create(account=account, token=token)
             refresh_session(session)
 
-            return Response({'token': token}, status=200)
+            return Response({'token': token, 'user': account.user}, status=200)
 
         return Response({'error': 'Invalid user or password'}, status=400)
+    
+class Logout(APIView):
+    def post(self, request):
+        token = request.data['token']
+        if token:
+            session = Session.objects.filter(token=token).first()
+            if session:
+                session.delete()
+                return Response({}, status=200)
+        return Response({'error': 'Invalid token'}, status=400)
 
 class Search(APIView):
     BASE_URL = 'https://www.googleapis.com/youtube/v3/search'
@@ -104,7 +115,7 @@ class Search(APIView):
                         })
 
                 return Response({'results': results}, status=200)
-            return Response({'error': "Youtube didn't like that, default API keys give you 100 queries per day, generate another one and set it"}, status=400)
+            return Response({'error': "Either invalid token or the token used up its 100 daily searches, generate another token."}, status=400)
         return Response({'error': 'Invalid query or token (duh)'}, status=400)
 
 
