@@ -18,7 +18,7 @@
 </script>
 
 
-<div class="container m-auto flex flex-col items-center gap-5 p-10">
+<div class="container m-auto flex flex-col items-start gap-5 p-5">
 	{#each results as result}
 		<VideoElement {result} />
 	{/each}

@@ -5,4 +5,8 @@
         thumbnail: string;
         channel: string;
     }
+
+    export interface PlaylistVideoResult extends VideoResult {
+        url: string;
+    }
 </script>

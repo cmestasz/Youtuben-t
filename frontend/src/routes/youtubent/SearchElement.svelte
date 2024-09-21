@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { YT_TOKEN_NAME } from '$lib/Constants.svelte';
 	import { postRequest } from '$lib/Fetcher.svelte';
+	import { Button } from 'flowbite-svelte';
 	import type { VideoResult } from '../../lib/youtubent/Models.svelte';
 	import { checkForToken } from '../../lib/youtubent/Utils.svelte';
-    import VideoElement from '../../lib/youtubent/VideoElement.svelte';
+	import VideoElement from '../../lib/youtubent/VideoElement.svelte';
 
 	let queryElement: HTMLInputElement;
 	let results: VideoResult[] = [];
@@ -36,15 +37,15 @@
 	}
 </script>
 
-<div>
-	<div class="flex w-max flex-col gap-2">
-		<input bind:this={queryElement} class="block" type="text" placeholder="Search query" />
-		<button class="bg-gray-400 p-2" on:click={search}>Search</button>
+<div class="flex w-full flex-col gap-8">
+	<div class="m-auto flex w-full flex-col gap-2 items-center">
+		<input bind:this={queryElement} class="block w-full" type="text" placeholder="Search query" />
+		<Button class="w-64" color="green" pill on:click={search}>Search</Button>
 	</div>
 
-	{#each results as result}
-		<div class="flex flex-col gap-2 align-middle">
+	<div class="container m-auto flex flex-col items-start gap-5 p-5">
+		{#each results as result}
 			<VideoElement {result} />
-		</div>
-	{/each}
+		{/each}
+	</div>
 </div>

@@ -1,7 +1,8 @@
 <script lang="ts">
-	import type { VideoResult } from './Models.svelte';
+	import type { PlaylistVideoResult, VideoResult } from './Models.svelte';
     import { postRequest } from '$lib/Fetcher.svelte';
-	import { audioURL } from './Stores.svelte';
+	import { playlist } from './Stores.svelte';
+	import { Button } from 'flowbite-svelte';
 
 	export let result: VideoResult;
 
@@ -23,13 +24,26 @@
 			return;
 		}
 
-		audioURL.set(response.url);
+		let playlistResult: PlaylistVideoResult = {
+			...result,
+			url: response.url
+		};
+
+		playlist.update((list) => {
+			if (list.some((item) => item.yt_id === playlistResult.yt_id)) {
+				return list;
+			}
+			list.push(playlistResult);
+			return list;
+		});
 	}
 </script>
 
-<div>
-	<p>{result.title}</p>
-	<p>{result.channel}</p>
-	<img src={result.thumbnail} alt="thumbnail" width="120" height="90" />
-	<button on:click={play} value={result.yt_id}>Play</button>
+<div class="flex w-full flex-row gap-5 bg-gray-100 p-4 rounded-xl">
+	<img src={result.thumbnail} alt="thumbnail" />
+	<div class="flex flex-col gap-3">
+		<p class="text-lg font-bold">{result.title}</p>
+		<p class="text-sm">{result.channel}</p>
+		<Button class="w-64" color="green" pill on:click={play} value={result.yt_id}>Add to playlist</Button>
+	</div>
 </div>
