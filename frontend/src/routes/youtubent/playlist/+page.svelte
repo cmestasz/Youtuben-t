@@ -23,7 +23,14 @@
 	}
 </script>
 
-<div class="container m-auto flex flex-col items-start gap-5 p-5">
+<div class="container flex flex-col items-center gap-5">
+	<div class="text-center">
+		<p>Your playlist, these songs will play from top to bottom.</p>
+		<p class="text-xs">
+			(I had a short argument with a teacher about whether this is a list or a queue but i can't
+			remember it)
+		</p>
+	</div>
 	{#each list as item}
 		<VideoElement result={item} type={VideoElementType.PLAYLIST} {remove} />
 	{/each}

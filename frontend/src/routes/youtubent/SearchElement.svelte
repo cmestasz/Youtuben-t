@@ -2,8 +2,8 @@
 	import { YT_TOKEN_NAME } from '$lib/Constants.svelte';
 	import { postRequest } from '$lib/Fetcher.svelte';
 	import { Button } from 'flowbite-svelte';
-	import { VideoElementType, type VideoResult } from '$lib/youtubent/Models.svelte';
-	import { checkForToken } from '$lib/youtubent/Utils.svelte';
+	import { AlertType, VideoElementType, type VideoResult } from '$lib/youtubent/Models.svelte';
+	import { checkForYTToken, updateAlerts } from '$lib/youtubent/Utils.svelte';
 	import VideoElement from '$lib/youtubent/VideoElement.svelte';
 
 	let queryElement: HTMLInputElement;
@@ -17,7 +17,8 @@
 		results: VideoResult[];
 	}
 	async function search() {
-		if (!checkForToken()) {
+		if (!checkForYTToken()) {
+			updateAlerts('You need a YouTube token to search', AlertType.WARNING);
 			return;
 		}
 

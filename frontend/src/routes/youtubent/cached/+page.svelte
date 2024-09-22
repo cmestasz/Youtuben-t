@@ -18,7 +18,8 @@
 </script>
 
 
-<div class="container m-auto flex flex-col items-start gap-5 p-5">
+<div class="container flex flex-col items-center gap-5">
+	<p>Cached songs, you can just play these, they get removed every week-ish</p>
 	{#each results as result}
 		<VideoElement {result} type={VideoElementType.RESULT} {remove} />
 	{/each}

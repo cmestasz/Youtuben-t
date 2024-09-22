@@ -3,6 +3,9 @@
 	import { onMount } from 'svelte';
 	import { ACCOUNT_TOKEN_NAME, USER_NAME } from '$lib/Constants.svelte';
 	import { Button } from 'flowbite-svelte';
+	import { user_name } from '$lib/youtubent/Stores.svelte';
+	import { updateAlerts } from '$lib/youtubent/Utils.svelte';
+	import { AlertType } from '$lib/youtubent/Models.svelte';
 
 	let userElement: HTMLInputElement;
 	let passElement: HTMLInputElement;
@@ -42,6 +45,7 @@
 
 		localStorage.setItem(ACCOUNT_TOKEN_NAME, token);
 		localStorage.setItem(USER_NAME, response.user);
+		user_name.set(response.user);
 		displayUser = response.user;
 	}
 
@@ -55,8 +59,6 @@
 		user: string;
 	}
 	async function manualLogin() {
-		console.log(userElement.value);
-
 		let user = userElement.value;
 		let pass = passElement.value;
 
@@ -77,7 +79,9 @@
 
 		localStorage.setItem(ACCOUNT_TOKEN_NAME, response.token);
 		localStorage.setItem(USER_NAME, response.user);
+		user_name.set(response.user);
 		displayUser = response.user;
+		updateAlerts('Logged in successfully', AlertType.SUCCESS);
 	}
 
 	interface RegisterRequest {
@@ -106,7 +110,9 @@
 
 		localStorage.setItem(ACCOUNT_TOKEN_NAME, response.token);
 		localStorage.setItem(USER_NAME, response.user);
+		user_name.set(response.user);
 		displayUser = response.user;
+		updateAlerts('Registered successfully', AlertType.SUCCESS);
 	}
 
 	interface LogoutRequest {
@@ -129,7 +135,9 @@
 
 		localStorage.removeItem(ACCOUNT_TOKEN_NAME);
 		localStorage.removeItem(USER_NAME);
+		user_name.set('');
 		displayUser = '';
+		updateAlerts('Logged out successfully', AlertType.SUCCESS);
 	}
 </script>
 

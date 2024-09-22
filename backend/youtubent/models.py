@@ -9,12 +9,16 @@ class CachedAudio(models.Model):
     thumbnail = models.URLField()
     channel = models.CharField(max_length=100)
     file = models.FileField(upload_to='audio/', null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Account(models.Model):
     user = models.CharField(max_length=25)
     password = models.CharField(max_length=100)
     saved_amount = models.IntegerField(default=0)
+    downloads_reset = models.DateTimeField(auto_now_add=True)
+    downloads_count = models.IntegerField(default=0)
+    special = models.BooleanField(default=False)
 
 
 class AccountAudio(models.Model):

@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { ACCOUNT_TOKEN_NAME } from "$lib/Constants.svelte";
 	import { postRequest } from "$lib/Fetcher.svelte";
-	import { VideoElementType, type VideoResult } from "$lib/youtubent/Models.svelte";
-	import { playlist } from "$lib/youtubent/Stores.svelte";
-	import { checkForToken } from "$lib/youtubent/Utils.svelte";
+	import { AlertType, VideoElementType, type PlaylistVideoResult, type VideoResult } from "$lib/youtubent/Models.svelte";
+	import { checkForAccountToken, updateAlerts } from "$lib/youtubent/Utils.svelte";
 	import VideoElement from "$lib/youtubent/VideoElement.svelte";
+	import { Button } from "flowbite-svelte";
 	import { onMount } from "svelte";
+    import { playlist } from "$lib/youtubent/Stores.svelte";
 
-    let results: VideoResult[] = [];
+    let results: PlaylistVideoResult[] = [];
     let savedAmount = 0;
     let maxAmount = 100;
 
@@ -15,13 +16,13 @@
         token: string;
     }
     interface SavedListResponse {
-        results: VideoResult[];
+        results: PlaylistVideoResult[];
         saved_amount: number;
         max_amount: number;
     }
     onMount(async () => {
-        if (!checkForToken()) {
-            alert("You need an account to save videos!");
+        if (!checkForAccountToken()) {
+            updateAlerts("You need an account to view saved songs", AlertType.WARNING);
             return;
         }
 
@@ -43,10 +44,26 @@
         results = results.filter((item) => item.yt_id !== result.yt_id);
         savedAmount -= 1;
     }
+
+    function addAll() {
+        playlist.update((value) => {
+            let newValue = value;
+            for (let result of results) {
+                if (newValue.some((item) => item.yt_id === result.yt_id)) {
+                    continue;
+                }
+                newValue.push(result);
+            }
+            return newValue;
+        });
+    }
+
 </script>
 
-<div class="container m-auto flex flex-col items-start gap-5 p-5">
-    <p class="text-xl font-bold">You have saved {savedAmount} out of {maxAmount} videos</p>
+<div class="container flex flex-col items-center gap-5">
+    <p>Your saved songs, you can add these to your playlist</p>
+    <p class="text-xl font-bold">You have saved {savedAmount} out of {maxAmount} songs</p>
+    <Button class="w-64" pill color="blue" on:click={addAll}>Add all to playlist</Button>
     {#each results as result}
         <VideoElement {result} type={VideoElementType.SAVED} {remove} />
     {/each}

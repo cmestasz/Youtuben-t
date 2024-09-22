@@ -15,4 +15,16 @@
 		PLAYLIST = 'playlist',
 		SAVED = 'saved'
 	}
+
+    export enum AlertType {
+        SUCCESS = 'green',
+        ERROR = 'red',
+        INFO = 'blue',
+        WARNING = 'yellow'
+    }
+
+    export interface AlertMessage {
+        type: AlertType;
+        message: string;
+    }
 </script>

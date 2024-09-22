@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { YT_TOKEN_NAME } from '$lib/Constants.svelte';
-	import { checkForToken } from '$lib/youtubent/Utils.svelte';
+	import { checkForYTToken, updateAlerts } from '$lib/youtubent/Utils.svelte';
 	import { Button } from 'flowbite-svelte';
+	import { AlertType } from '$lib/youtubent/Models.svelte';
 
 	let tokenElement: HTMLInputElement;
 	let tokenSet: boolean = false;
 
 	onMount(() => {
-		tokenSet = checkForToken();
+		tokenSet = checkForYTToken();
 	});
 
 	function setYTToken() {
@@ -16,6 +17,7 @@
 		localStorage.setItem(YT_TOKEN_NAME, token);
 		tokenElement.value = '';
 		tokenSet = true;
+		updateAlerts('Token set successfully', AlertType.SUCCESS);
 	}
 </script>
 

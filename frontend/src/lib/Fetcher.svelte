@@ -1,12 +1,15 @@
 <script lang="ts" context="module">
 	import { API_URL } from '$lib/Constants.svelte';
+	import { AlertType } from './youtubent/Models.svelte';
+	import { updateAlerts } from './youtubent/Utils.svelte';
 
 	export async function getRequest<Response>(url: string) {
 		let dest: string = API_URL + url;
 		const response = await fetch(dest);
 		if (!response.ok) {
             let obj: Error = await response.json();
-            alert(obj.error);
+            updateAlerts(obj.error, AlertType.ERROR);
+			console.log(obj.error);
             return null;
 		}
 		let obj: Response = await response.json();
@@ -29,7 +32,8 @@
 		});
 		if (!response.ok) {
             let obj: Error = await response.json();
-            alert(obj.error);
+            updateAlerts(obj.error, AlertType.ERROR);
+			console.log(obj.error);
             return null;
         }
 		let obj: Response = await response.json();

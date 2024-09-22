@@ -3,9 +3,10 @@
 	import { postRequest } from '$lib/Fetcher.svelte';
 	import { playlist } from './Stores.svelte';
 	import { Button } from 'flowbite-svelte';
-	import { VideoElementType } from './Models.svelte';
-	import { checkForToken } from './Utils.svelte';
+	import { AlertType, VideoElementType } from './Models.svelte';
+	import { checkForAccountToken, updateAlerts } from './Utils.svelte';
 	import { ACCOUNT_TOKEN_NAME } from '$lib/Constants.svelte';
+	import { get } from 'svelte/store';
 
 	export let result: VideoResult;
 	export let type: VideoElementType;
@@ -13,15 +14,29 @@
 
 	interface PlayRequest {
 		video_id: string;
+		token: string;
 	}
 	interface PlayResponse {
 		url: string;
 	}
 
 	async function play(event: Event) {
+		if (!checkForAccountToken()) {
+			updateAlerts(
+				'You need an account to download songs (sorry but rate limits).',
+				AlertType.WARNING
+			);
+			return;
+		}
+		if (get(playlist).some((item) => item.yt_id === result.yt_id)) {
+			updateAlerts('Song already in playlist', AlertType.INFO);
+			return;
+		}
+
 		let videoId = (event.target as HTMLButtonElement).value;
 		let request: PlayRequest = {
-			video_id: videoId
+			video_id: videoId,
+			token: localStorage.getItem(ACCOUNT_TOKEN_NAME)!
 		};
 
 		let response = await postRequest<PlayRequest, PlayResponse>('youtubent/play/', request);
@@ -35,9 +50,6 @@
 		};
 
 		playlist.update((list) => {
-			if (list.some((item) => item.yt_id === playlistResult.yt_id)) {
-				return list;
-			}
 			list.push(playlistResult);
 			return list;
 		});
@@ -48,11 +60,11 @@
 		token: string;
 	}
 	async function forget() {
-		if (!checkForToken()) {
-			alert('You need an account to forget videos!');
+		if (!checkForAccountToken()) {
+			updateAlerts('You need an account to forget songs (what)', AlertType.WARNING);
 			return;
 		}
-		
+
 		let token = localStorage.getItem(ACCOUNT_TOKEN_NAME)!;
 		let request: ForgetRequest = {
 			video_id: result.yt_id,
@@ -64,6 +76,7 @@
 			return;
 		}
 
+		updateAlerts('Song forgotten', AlertType.SUCCESS);
 		remove(result);
 	}
 
@@ -72,8 +85,8 @@
 		token: string;
 	}
 	async function save(event: Event) {
-		if (!checkForToken()) {
-			alert('You need an account to save videos!');
+		if (!checkForAccountToken()) {
+			updateAlerts('You need an account to save songs.', AlertType.WARNING);
 			return;
 		}
 
@@ -84,7 +97,12 @@
 			token: token
 		};
 
-		await postRequest<SaveRequest, {}>('youtubent/save/', request);
+		let result = await postRequest<SaveRequest, {}>('youtubent/save/', request);
+		if (result == null) {
+			return;
+		}
+		
+		updateAlerts('Song saved', AlertType.SUCCESS);
 	}
 </script>
 
@@ -97,10 +115,16 @@
 			<Button class="w-64" color="green" pill on:click={play} value={result.yt_id}
 				>Add to playlist</Button
 			>
-			<Button class="w-64" color="blue" pill on:click={save} value={result.yt_id}>Save to account storage</Button>
+			<Button class="w-64" color="blue" pill on:click={save} value={result.yt_id}
+				>Save to account storage</Button
+			>
 		{:else if type == VideoElementType.PLAYLIST}
-			<Button class="w-64" color="blue" pill on:click={save} value={result.yt_id}>Save to account storage</Button>
-			<Button class="w-64" color="red" pill on:click={() => remove(result)}>Remove from playlist</Button>
+			<Button class="w-64" color="blue" pill on:click={save} value={result.yt_id}
+				>Save to account storage</Button
+			>
+			<Button class="w-64" color="red" pill on:click={() => remove(result)}
+				>Remove from playlist</Button
+			>
 		{:else if type == VideoElementType.SAVED}
 			<Button class="w-64" color="green" pill on:click={play} value={result.yt_id}
 				>Add to playlist</Button

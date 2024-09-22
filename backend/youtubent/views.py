@@ -9,8 +9,8 @@ import requests
 import yt_dlp
 from .models import CachedAudio, Account, AccountAudio, Session
 from .serializers import CachedAudioSerializer
-from .utils import refresh_session, dumb_token
-from .consts import MAX_SAVED_VIDEOS
+from .utils import download_song, refresh_downloads, refresh_session, dumb_token, clean_cache
+from .consts import MAX_SAVED_VIDEOS, BASE_MEDIA_URL, HOURS_DOWNLOADS_RESET, MAX_DOWNLOADS
 
 # Create your views here.
 
@@ -54,7 +54,6 @@ class Register(APIView):
         user = request.data['user']
         password = request.data['password']
 
-        print(user, password)
         if user and password:
             if Account.objects.filter(user=user).exists():
                 return Response({'error': 'User already exists'}, status=400)
@@ -87,6 +86,8 @@ class Search(APIView):
     MAX_RESULTS = 10
 
     def post(self, request):
+        clean_cache()
+
         query = request.data['query']
         token = request.data['token']
 
@@ -125,54 +126,36 @@ class Search(APIView):
 
 
 class Play(APIView):
-    BASE_URL = 'http://localhost:8000'
-
     def post(self, request):
+        clean_cache()
         video_id = request.data['video_id']
+        token = request.data['token']
 
-        audio_objs = CachedAudio.objects.filter(yt_id=video_id)
+        sessions = Session.objects.filter(token=token)
+        if token and video_id and sessions.exists():
+            account = sessions.first().account
 
-        if video_id and audio_objs.exists():
-            audio_obj = audio_objs.first()
-            if audio_obj.file:
-                url = f'{self.BASE_URL}{audio_obj.file.url}'
-                return Response({'url': url}, status=200)
+            refresh_downloads(account)
+            
+            audio_objs = CachedAudio.objects.filter(yt_id=video_id)
 
-            ydl_opts = {
-                'format': 'm4a/bestaudio/best',
-                'outtmpl': f'temp/{video_id}.%(ext)s',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'm4a',
-                }],
-            }
+            if audio_objs.exists():
+                audio_obj = audio_objs.first()
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                error_code = ydl.download(
-                    [f'https://www.youtube.com/watch?v={video_id}'])
+                if audio_obj.file:
+                    return Response({'url': BASE_MEDIA_URL + audio_obj.file.url}, status=200)
 
-                if error_code:
-                    return Response({'error': 'The library failed, tell the creator to update it'}, status=400)
-
-            try:
-                route = os.path.join(
-                    settings.BASE_DIR, 'temp', f'{video_id}.m4a')
-
-                with open(route, 'rb') as file:
-                    django_file = File(file, name=f'{video_id}.m4a')
-
-                    audio_obj.file = django_file
-                    audio_obj.save()
-
-                    django_file.close()
-
-                os.remove(route)
-                url = f'{self.BASE_URL}{audio_obj.file.url}'
-                return Response({'url': url}, status=200)
-            except Exception as e:
-                print(e)
-                return Response({'error': 'I was too lazy to test this, tell the creator'}, status=400)
-        return Response({'error': 'Invalid video_id'}, status=400)
+                if account.downloads_count < MAX_DOWNLOADS or account.special:
+                    ok, message = download_song(video_id, BASE_MEDIA_URL, audio_obj)
+                    if ok:
+                        account.downloads_count += 1
+                        account.save()
+                        return Response({'url': message}, status=200)
+                    return Response({'error': message}, status=400)
+                
+                return Response({'error': 'You have reached the maximum amount of hourly downloads'}, status=400)
+            return Response({'error': 'Video not found'}, status=400)
+        return Response({'error': 'Invalid token or video_id'}, status=400)
 
 
 class CachedAudioViewSet(APIView):
@@ -191,15 +174,27 @@ class Save(APIView):
             session = Session.objects.filter(token=token).first()
             if session:
                 account = session.account
+
+                refresh_downloads(account)
+
                 audio = CachedAudio.objects.filter(yt_id=video_id).first()
                 if audio:
                     if account.saved_amount < MAX_SAVED_VIDEOS:
                         existing = AccountAudio.objects.filter(account=account, audio=audio)
                         if not existing.exists():
-                            AccountAudio.objects.create(account=account, audio=audio)
-                            account.saved_amount += 1
-                            account.save()
-                            return Response({}, status=200)
+                            if audio.file:
+                                return Response({'url': BASE_MEDIA_URL + audio.file.url}, status=200)
+
+                            if account.downloads_count < MAX_DOWNLOADS or account.special:
+                                AccountAudio.objects.create(account=account, audio=audio)
+                                account.downloads_count += 1
+                                account.saved_amount += 1
+                                account.save()
+                                ok, message = download_song(video_id, BASE_MEDIA_URL, audio)
+                                if ok:
+                                    return Response({'url': message}, status=200)
+                                return Response({'error': message}, status=400)
+                            return Response({'error': 'You have reached the maximum amount of hourly downloads'}, status=400)
                         return Response({'error': 'Video already saved'}, status=400)
                     return Response({'error': 'You have reached the maximum amount of saved videos'}, status=400)
         return Response({'error': 'Invalid token or video_id'}, status=400)
@@ -237,8 +232,17 @@ class SavedList(APIView):
                 account_audios = AccountAudio.objects.filter(account=account)
                 queryset = CachedAudio.objects.filter(accountaudio__in=account_audios)
 
-                serializer = CachedAudioSerializer(queryset, many=True)
-                
-                data = {'results': serializer.data, 'saved_amount': account.saved_amount, 'max_amount': MAX_SAVED_VIDEOS}
+                results = []
+                for audio in queryset:
+                    audio_serialized = {
+                        'yt_id': audio.yt_id,
+                        'title': audio.title,
+                        'thumbnail': audio.thumbnail,
+                        'channel': audio.channel,
+                        'url': BASE_MEDIA_URL + audio.file.url
+                    }
+                    results.append(audio_serialized)
+
+                data = {'results': results, 'saved_amount': account.saved_amount, 'max_amount': MAX_SAVED_VIDEOS}
                 return Response(data, status=200)
         return Response({'error': 'Invalid token'}, status=400)
